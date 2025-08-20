@@ -471,30 +471,26 @@ func getInterfaceAlias(options sdc.OptionMap) ([]byte, error) {
         interfaces = natsortInterfaces(interfaces)
     }
 
-    interfacesAlias := make([][]string, 0, len(interfaces)+1)
-    interfacesAlias = append(interfacesAlias, []string{"Name", "Alias"})
-    if len(interfaces) == 0 {
-        return json.Marshal(interfacesAlias)
-    }
-
+    // Build []map[string]string instead of [][]string with header
+    out := make([]map[string]string, 0, len(interfaces))
     for _, itf := range interfaces {
         alias := itf
-        if entry, entryExisted := portEntries[itf].(map[string]interface{}); entryExisted {
-            if a, aliasExisted := entry["alias"]; aliasExisted {
+        if entry, ok := portEntries[itf].(map[string]interface{}); ok {
+            if a, ok := entry["alias"]; ok {
                 alias = fmt.Sprint(a)
             } else if a2, ok := name2alias[itf]; ok && a2 != "" {
                 alias = a2
             }
         } else if a2, ok := name2alias[itf]; ok && a2 != "" {
-            // Port only defined in port_config
             alias = a2
         }
-        interfacesAlias = append(interfacesAlias, []string{itf, alias})
+        out = append(out, map[string]string{
+            "Name":  itf,
+            "Alias": alias,
+        })
     }
-
-    return json.Marshal(interfacesAlias)
+    return json.Marshal(out)
 }
-
 
 func loadNameAliasMaps() (map[string]string, map[string]string) {
     name2alias := map[string]string{}

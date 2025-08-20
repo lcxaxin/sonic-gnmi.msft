@@ -40,7 +40,7 @@ func TestGetShowInterfaceAlias(t *testing.T) {
     portsFileName := "../testdata/PORTS.txt"
     portsIbRecFileName := "../testdata/PORTS_IB_REC_ONLY.txt"
 
-    aliasSingleEthernet0 := `[["Name","Alias"],["Ethernet0","etp0"]]`
+    aliasSingleEthernet0 := `[{"Name":"Ethernet0","Alias":"etp0"}]`
 
     tests := []struct {
         desc        string
@@ -125,14 +125,14 @@ func TestGetShowInterfaceAlias(t *testing.T) {
 
     t.Run("assert header-only when NO DATA", func(t *testing.T) {
         FlushDataSet(t, ConfigDbNum)
-        table := getAliasTable(t, ctx, gClient, "")
-        mustHeaderOnly(t, table)
+        list := getAliasList(t, ctx, gClient, "")
+		mustEmpty(t, list)
     })
     t.Run("assert base ports present (unordered)", func(t *testing.T) {
         FlushDataSet(t, ConfigDbNum)
         AddDataSet(t, ConfigDbNum, portsFileName)
-        table := getAliasTable(t, ctx, gClient, "")
-        mustContainPairs(t, table, [][2]string{
+        list := getAliasList(t, ctx, gClient, "")
+        mustContainPairs(t, list, [][2]string{
             {"Ethernet0", "etp0"},
             {"Ethernet40", "etp10"},
             {"Ethernet80", "etp20"},
@@ -142,8 +142,8 @@ func TestGetShowInterfaceAlias(t *testing.T) {
         FlushDataSet(t, ConfigDbNum)
         AddDataSet(t, ConfigDbNum, portsFileName)
         AddDataSet(t, ConfigDbNum, portsIbRecFileName)
-        table := getAliasTable(t, ctx, gClient, "")
-        mustContainPairs(t, table, [][2]string{
+        list := getAliasList(t, ctx, gClient, "")
+        mustContainPairs(t, list, [][2]string{
             {"Ethernet0", "etp0"},
             {"Ethernet40", "etp10"},
             {"Ethernet80", "etp20"},
@@ -155,7 +155,8 @@ func TestGetShowInterfaceAlias(t *testing.T) {
     })
 }
 
-func getAliasTable(t *testing.T, ctx context.Context, client pb.GNMIClient, withInterface string) [][]string {
+// Replace helper to parse list of objects
+func getAliasList(t *testing.T, ctx context.Context, client pb.GNMIClient, withInterface string) []map[string]string {
     t.Helper()
     elems := []*pb.PathElem{{Name: "interface"}}
     if withInterface != "" {
@@ -176,24 +177,30 @@ func getAliasTable(t *testing.T, ctx context.Context, client pb.GNMIClient, with
         return nil
     }
     raw := resp.Notification[0].Update[0].Val.GetJsonIetfVal()
-    var table [][]string
-    if err := json.Unmarshal(raw, &table); err != nil {
+    var list []map[string]string
+    if err := json.Unmarshal(raw, &list); err != nil {
         t.Fatalf("unmarshal: %v", err)
     }
-    return table
+    return list
 }
 
-func mustContainPairs(t *testing.T, table [][]string, want [][2]string) {
+func mustEmpty(t *testing.T, list []map[string]string) {
+    t.Helper()
+    if len(list) != 0 {
+        t.Fatalf("expected empty list, got %v", list)
+    }
+}
+
+func mustContainPairs(t *testing.T, list []map[string]string, want [][2]string) {
     t.Helper()
     seen := map[[2]string]bool{}
-    for _, row := range table[1:] {
-        if len(row) == 2 {
-            seen[[2]string{row[0], row[1]}] = true
-        }
+    for _, row := range list {
+        n, a := row["Name"], row["Alias"]
+        seen[[2]string{n, a}] = true
     }
     for _, p := range want {
         if !seen[p] {
-            t.Fatalf("missing pair %v in table %v", p, table)
+            t.Fatalf("missing pair %v in list %v", p, list)
         }
     }
 }
