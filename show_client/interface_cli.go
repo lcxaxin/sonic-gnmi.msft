@@ -413,14 +413,14 @@ func getInterfaceAlias(options sdc.OptionMap) ([]byte, error) {
     }
 
     // Load name<->alias from port_config if needed
-    name2alias, alias2name := map[string]string{}, map[string]string{}
+    var name2alias, alias2name map[string]string
     if !aliasFieldPresent {
-        name2alias, alias2name = loadNameAliasMaps()
+        n2a, a2n := loadNameAliasMaps()
         // Normalize alias-keyed entries by our own map if needed
-        if len(alias2name) > 0 {
+        if len(a2n) > 0 {
             normalized := make(map[string]interface{}, len(portEntries))
             for k, v := range portEntries {
-                if real, ok := alias2name[k]; ok {
+                if real, ok := a2n[k]; ok {
                     normalized[real] = v
                 } else {
                     normalized[k] = v
@@ -428,6 +428,7 @@ func getInterfaceAlias(options sdc.OptionMap) ([]byte, error) {
             }
             portEntries = normalized
         }
+        name2alias, alias2name = n2a, a2n
     }
 
     // Build interface list (accept name or alias)
