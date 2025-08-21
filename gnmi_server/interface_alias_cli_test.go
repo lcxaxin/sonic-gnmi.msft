@@ -43,7 +43,7 @@ func TestGetShowInterfaceAlias(t *testing.T) {
     portsFileName := "../testdata/PORTS.txt"
     portsIbRecFileName := "../testdata/PORTS_IB_REC_ONLY.txt"
 
-    aliasSingleEthernet0 := `[{"Name":"Ethernet0","Alias":"etp0"}]`
+    aliasSingleEthernet0 := `{"Ethernet0":{"alias":"etp0"}}`
 
     tests := []struct {
         desc        string
@@ -497,14 +497,14 @@ func TestGetShowInterfaceAlias(t *testing.T) {
                 defer cleanup()
             }
 
-            list := getAliasList(t, ctx, gClient, tc.withInterface)
+            m := getAliasMap(t, ctx, gClient, tc.withInterface)
             switch {
             case tc.wantEmpty:
-                mustEmpty(t, list)
+                mustEmptyMap(t, m)
             case tc.wantSingle != nil:
-                mustSinglePair(t, list, tc.wantSingle[0], tc.wantSingle[1])
+                mustSinglePairMap(t, m, tc.wantSingle[0], tc.wantSingle[1])
             case len(tc.wantContains) > 0:
-                mustContainPairs(t, list, tc.wantContains)
+                mustContainPairsMap(t, m, tc.wantContains)
             default:
                 // no-op: test only exercised code path
             }
@@ -512,7 +512,7 @@ func TestGetShowInterfaceAlias(t *testing.T) {
     }
 }
 
-func getAliasList(t *testing.T, ctx context.Context, client pb.GNMIClient, withInterface string) []map[string]string {
+func getAliasMap(t *testing.T, ctx context.Context, client pb.GNMIClient, withInterface string) map[string]map[string]string {
     t.Helper()
     elems := []*pb.PathElem{{Name: "interface"}}
     if withInterface != "" {
@@ -530,50 +530,47 @@ func getAliasList(t *testing.T, ctx context.Context, client pb.GNMIClient, withI
         t.Fatalf("Get failed: %v", err)
     }
     if len(resp.Notification) == 0 || len(resp.Notification[0].Update) == 0 {
-        return nil
+        return map[string]map[string]string{}
     }
     raw := resp.Notification[0].Update[0].Val.GetJsonIetfVal()
-    var list []map[string]string
-    if err := json.Unmarshal(raw, &list); err != nil {
+    var m map[string]map[string]string
+    if err := json.Unmarshal(raw, &m); err != nil {
         t.Fatalf("unmarshal: %v", err)
     }
-    return list
+    if m == nil {
+        m = map[string]map[string]string{}
+    }
+    return m
 }
 
-func mustEmpty(t *testing.T, list []map[string]string) {
+func mustEmptyMap(t *testing.T, m map[string]map[string]string) {
     t.Helper()
-    if len(list) != 0 {
-        t.Fatalf("expected empty list, got %v", list)
+    if len(m) != 0 {
+        t.Fatalf("expected empty map, got %v", m)
     }
 }
 
-func mustContainPairs(t *testing.T, list []map[string]string, want [][2]string) {
+func mustContainPairsMap(t *testing.T, m map[string]map[string]string, want [][2]string) {
     t.Helper()
-    seen := map[[2]string]bool{}
-    for _, row := range list {
-        n, a := row["Name"], row["Alias"]
-        seen[[2]string{n, a}] = true
-    }
     for _, p := range want {
-        if !seen[p] {
-            t.Fatalf("missing pair %v in list %v", p, list)
+        name, alias := p[0], p[1]
+        got, ok := m[name]
+        if !ok {
+            t.Fatalf("missing key %q in %v", name, m)
+        }
+        if got["alias"] != alias {
+            t.Fatalf("key %q alias mismatch: got %q want %q; full=%v", name, got["alias"], alias, m)
         }
     }
 }
 
-func mustHeaderOnly(t *testing.T, table [][]string) {
+func mustSinglePairMap(t *testing.T, m map[string]map[string]string, name, alias string) {
     t.Helper()
-    if len(table) != 1 || len(table[0]) != 2 || table[0][0] != "Name" || table[0][1] != "Alias" {
-        t.Fatalf("expected header-only, got %v", table)
+    if len(m) != 1 {
+        t.Fatalf("expected single entry, got %v", m)
     }
-}
-
-func mustSinglePair(t *testing.T, list []map[string]string, name, alias string) {
-    t.Helper()
-    if len(list) != 1 {
-        t.Fatalf("expected single row, got %v", list)
-    }
-    if list[0]["Name"] != name || list[0]["Alias"] != alias {
-        t.Fatalf("expected [%s,%s], got %v", name, alias, list)
+    v, ok := m[name]
+    if !ok || v["alias"] != alias {
+        t.Fatalf("expected %q:{alias:%q}, got %v", name, alias, m)
     }
 }
