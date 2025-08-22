@@ -39,6 +39,7 @@ func TestGetShowInterfaceAlias(t *testing.T) {
     portsFileName := "../testdata/PORTS.txt"
 
     aliasSingleEthernet0 := `{"Ethernet0":{"alias":"etp0"}}`
+    aliasAllInterface := `{"Ethernet0":{"alias":"etp0"},"Ethernet40":{"alias":"etp10"},"Ethernet80":{"alias":"etp20"}}`
 
     tests := []struct {
         desc        string
@@ -71,7 +72,8 @@ func TestGetShowInterfaceAlias(t *testing.T) {
                 elem: <name: "alias" >
             `,
             wantRetCode: codes.OK,
-            valTest:     false,
+            wantRespVal: []byte(aliasAllInterface),
+            valTest:     true,
             testInit: func() {
                 FlushDataSet(t, ConfigDbNum)
                 AddDataSet(t, ConfigDbNum, portsFileName)
