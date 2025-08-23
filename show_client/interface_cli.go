@@ -1,6 +1,7 @@
 package show_client
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -394,6 +395,12 @@ func getInterfaceAlias(options sdc.OptionMap) ([]byte, error) {
         return nil, err
     }
 
+	ports := make([]string, 0, len(portEntries))
+	for key := range portEntries {
+		ports = append(ports, key)
+	}
+	ports = natsortInterfaces(ports)
+
 	nameToAlias := make(map[string]string, len(portEntries))
     for name := range portEntries {
         alias := GetFieldValueString(portEntries, name, "", "alias")
@@ -417,9 +424,19 @@ func getInterfaceAlias(options sdc.OptionMap) ([]byte, error) {
     }
 
     // Build {"Ethernet0":{"alias":"etp0"}, ...} from CONFIG_DB PORT only
-    out := make(map[string]map[string]string, len(nameToAlias))
-    for name, alias := range nameToAlias {
-        out[name] = map[string]string{"alias": alias}
+	// Build ordered JSON: keys follow the sorted 'ports' slice
+    var buf bytes.Buffer
+    buf.WriteByte('{')
+    for i, port := range ports {
+        if i > 0 {
+            buf.WriteByte(',')
+        }
+        keyBytes, _ := json.Marshal(port)
+        valBytes, _ := json.Marshal(map[string]string{"alias": nameToAlias[port]})
+        buf.Write(keyBytes)
+        buf.WriteByte(':')
+        buf.Write(valBytes)
     }
-    return json.Marshal(out)
+    buf.WriteByte('}')
+    return buf.Bytes(), nil
 }
