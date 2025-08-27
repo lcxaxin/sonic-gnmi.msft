@@ -391,7 +391,6 @@ func getInterfaceAlias(options sdc.OptionMap) ([]byte, error) {
     // Read CONFIG_DB.PORT
     queries := [][]string{{"CONFIG_DB", "PORT"}}
     portEntries, err := GetMapFromQueries(queries)
-    err = nil
     if err != nil {
         log.Errorf("Failed to get ports from CONFIG_DB: %v", err)
         return nil, err
