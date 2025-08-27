@@ -169,13 +169,6 @@ func init() {
 		showCmdOptionVerbose,
 	)
 	sdc.RegisterCliPath(
-		[]string{"SHOW", "ipv6", "interfaces"},
-		getIPv6Interfaces,
-		nil,
-		sdc.UnimplementedOption(showCmdOptionNamespace),
-		showCmdOptionDisplay,
-	)
-	sdc.RegisterCliPath(
 		[]string{"SHOW", "interface", "switchport", "config"},
 		getInterfaceSwitchportConfig,
 		nil,
