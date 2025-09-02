@@ -227,9 +227,9 @@ func init() {
 	sdc.RegisterCliPath(
 		[]string{"SHOW", "system-memory"},
 		getSystemMemory,
-    nil,
+		nil,
 	)
-  sdc.RegisterCliPath(
+	sdc.RegisterCliPath(
 		[]string{"SHOW", "lldp", "neighbors"},
 		getLLDPNeighbors,
 		nil,
@@ -247,5 +247,11 @@ func init() {
 		getUptime,
 		nil,
 		showCmdOptionVerbose,
+	)
+	sdc.RegisterCliPath(
+		[]string{"SHOW", "interface", "flap"},
+		getInterfaceFlap,
+		nil,
+		showCmdOptionInterface,
 	)
 }
