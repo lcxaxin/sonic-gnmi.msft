@@ -5,7 +5,6 @@ package gnmi
 
 import (
 	"crypto/tls"
-	"os"
 	"testing"
 	"time"
 
@@ -46,8 +45,8 @@ func TestGetShowInterfaceNamingMode(t *testing.T) {
 		wantRetCode codes.Code
 		wantRespVal interface{}
 		valTest     bool
-		testInit    func()
-		teardown    func()
+		envKey      string
+		envVal      string
 	}{
 		{
 			desc:       "query SHOW interface naming_mode (default)",
@@ -59,10 +58,8 @@ func TestGetShowInterfaceNamingMode(t *testing.T) {
 			wantRetCode: codes.OK,
 			wantRespVal: []byte(expectedDefault),
 			valTest:     true,
-			testInit: func() {
-				// ensure no env override
-				_ = os.Unsetenv(show_client.SonicCliIfaceMode)
-			},
+			envKey:      show_client.SonicCliIfaceMode,
+			envVal:      "",
 		},
 		{
 			desc:       "query SHOW interface naming_mode (alias)",
@@ -74,26 +71,17 @@ func TestGetShowInterfaceNamingMode(t *testing.T) {
 			wantRetCode: codes.OK,
 			wantRespVal: []byte(expectedAlias),
 			valTest:     true,
-			testInit: func() {
-				os.Setenv(show_client.SonicCliIfaceMode, "alias")
-			},
-			teardown: func() {
-				_ = os.Unsetenv(show_client.SonicCliIfaceMode)
-			},
+			envKey:      show_client.SonicCliIfaceMode,
+			envVal:      "alias",
 		},
 	}
 
 	for _, test := range tests {
-		if test.testInit != nil {
-			test.testInit()
-		}
-
 		t.Run(test.desc, func(t *testing.T) {
+			if test.envKey != "" {
+				t.Setenv(test.envKey, test.envVal)
+			}
 			runTestGet(t, ctx, gClient, test.pathTarget, test.textPbPath, test.wantRetCode, test.wantRespVal, test.valTest)
 		})
-
-		if test.teardown != nil {
-			test.teardown()
-		}
 	}
 }
